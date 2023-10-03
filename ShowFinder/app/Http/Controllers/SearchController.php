@@ -4,12 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class SearchController extends Controller
 {
     public function search(Request $request)
     {
         $query = strtolower($request->input('q'));
+
+        $cachedResult = Cache::get('search_' . $query);
+
+        if ($cachedResult) {
+            return response()->json(['results' => $cachedResult], 200);
+        }
 
         // HTTP GET request
         $response = Http::get('http://api.tvmaze.com/search/shows', [
@@ -39,6 +46,8 @@ class SearchController extends Controller
             }
 
             if ($exactMatch) {
+                Cache::put('search_' . $query, [$exactMatch], now()->addHours(48));
+
                 // Return results
                 return response()->json(['results' => [$exactMatch]], 200);
             } else {
